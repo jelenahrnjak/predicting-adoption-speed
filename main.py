@@ -7,6 +7,8 @@ from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
 import lightgbm as lgb
 
+from eda import menu
+
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
@@ -23,27 +25,31 @@ def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def train_random_forest(X_train, y_train): # ovo za sve
+def train_random_forest(X_train, y_train):  # ovo za sve
     rf = RandomForestClassifier()
     best_params = grid_search(X_train, y_train, rf)
     rf = RandomForestClassifier(**best_params)
     rf.fit(X_train, y_train)
     return rf
 
+
 def train_gradient_boosting(X_train, y_train):
     gb = GradientBoostingClassifier()
     gb.fit(X_train, y_train)
     return gb
+
 
 def train_xgboost(X_train, y_train):
     xgboost = xgb.XGBClassifier()
     xgboost.fit(X_train, y_train)
     return xgboost
 
+
 def train_bagging(X_train, y_train):
     bagging = BaggingClassifier()
     bagging.fit(X_train, y_train)
     return bagging
+
 
 def train_light_gbm(X_train, y_train, X_val, y_val):
     X_train2 = np.array(X_train)
@@ -80,6 +86,7 @@ def train_light_gbm(X_train, y_train, X_val, y_val):
 
     return lgb_model
 
+
 def evaluate_model(model, X_val, y_val, X_test, y_test):
     val_predictions = model.predict(X_val)
     val_accuracy = accuracy_score(y_val, val_predictions)
@@ -102,8 +109,8 @@ def grid_search(X_train, y_train, rfc):
     # }
 
     param_grid = {
-        'n_estimators': [250, 300, 350], #broj drveca u sumi
-        'max_depth': [20, 35, 45], #maksimalna dubina
+        'n_estimators': [250, 300, 350],  # broj drveca u sumi
+        'max_depth': [20, 35, 45],  # maksimalna dubina
         'min_samples_split': [2, 5, 10],
         'min_samples_leaf': [1, 2, 4],
         'max_features': ['auto', 'sqrt', 'log2'],
@@ -124,13 +131,32 @@ def grid_search(X_train, y_train, rfc):
     best_params = grid_search.best_params_
     return best_params
 
+
 def main():
-    print("u mainu sam")
-    data = load_data('train.csv')
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
-    model = train_random_forest(X_train, y_train)
-    print('Random forest:')
-    evaluate_model(model, X_val, y_val, X_test, y_test)
+    while True:
+        print("Select an option:")
+        print("1 - Exploratory data analysis")
+        print("2 - Model fitting")
+        print("X - Quit")
+
+        choice = input("Enter option number: ")
+
+        if choice == "1":
+            menu()
+        elif choice == "2":
+
+            data = load_data('train.csv')
+            X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
+            model = train_random_forest(X_train, y_train)
+            print('Random forest:')
+            evaluate_model(model, X_val, y_val, X_test, y_test)
+
+        elif choice == "x" or choice == "X":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please select an option from menu.")
+
 
 if __name__ == '__main__':
     main()
