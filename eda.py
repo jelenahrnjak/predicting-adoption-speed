@@ -23,12 +23,12 @@ def load_and_map_data():
 
     breed_mapping = dict(breeds[['BreedID', "BreedName"]].values)
     train["Breed1"] = train.Breed1.map(breed_mapping)
-    train['Breed2'] = train.Breed2.map(breed_mapping)
+    train['Breed2'] = train.Breed2.map(lambda x: breed_mapping[x] if x != 0 else "Not specified")
 
     color_mapping = dict(colors[['ColorID', "ColorName"]].values)
     train["Color1"] = train.Color1.map(color_mapping)
-    train['Color2'] = train.Color2.map(color_mapping)
-    train['Color3'] = train.Color3.map(color_mapping)
+    train['Color2'] = train.Color2.map(lambda x: color_mapping[x] if x != 0 else "Not specified")
+    train['Color3'] = train.Color3.map(lambda x: color_mapping[x] if x != 0 else "Not specified")
 
     state_mapping = dict(states[['StateID', "StateName"]].values)
     train["State"] = train.State.map(state_mapping)
