@@ -14,6 +14,8 @@ gb_filename = 'gradient_boosting_model.joblib'
 xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
+from eda import menu
+
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
@@ -46,7 +48,7 @@ def train_random_forest(X_train, y_train):
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
         dump(rf, rf_filename)
-
+        
     rf.fit(X_train, y_train)
     return rf
 
@@ -179,24 +181,42 @@ def grid_search(X_train, y_train, rfc, param_grid):
 
 
 def main():
-    print("u mainu sam")
-    data = load_data('train.csv')
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
-    rf_model = train_random_forest(X_train, y_train)
-    print('Random forest:')
-    evaluate_model(rf_model, X_val, y_val, X_test, y_test)
 
-    gb_model = train_gradient_boosting(X_train, y_train)
-    print('Gradient boosting:')
-    evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+    while True:
+        print("Select an option:")
+        print("1 - Exploratory data analysis")
+        print("2 - Model fitting")
+        print("X - Quit")
 
-    xgb_model = train_xgboost(X_train, y_train)
-    print('XGBoost:')
-    evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+        choice = input("Enter option number: ")
 
-    bagging_model = train_bagging(X_train, y_train)
-    print('Bagging:')
-    evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+        if choice == "1":
+            menu()
+        elif choice == "2":
+
+            data = load_data('train.csv')
+            X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
+            rf_model = train_random_forest(X_train, y_train)
+            print('Random forest:')
+            evaluate_model(rf_model, X_val, y_val, X_test, y_test)
+
+            gb_model = train_gradient_boosting(X_train, y_train)
+            print('Gradient boosting:')
+            evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+
+            xgb_model = train_xgboost(X_train, y_train)
+            print('XGBoost:')
+            evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+
+            bagging_model = train_bagging(X_train, y_train)
+            print('Bagging:')
+            evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+
+        elif choice == "x" or choice == "X":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please select an option from menu.")
 
 
 if __name__ == '__main__':
