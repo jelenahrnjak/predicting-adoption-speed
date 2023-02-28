@@ -6,6 +6,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
 import lightgbm as lgb
+from joblib import dump, load
+import os
+
+rf_filename = 'random_forest_model.joblib'
+gb_filename = 'gradient_boosting_model.joblib'
+xgb_filename = 'xgb_model.joblib'
+bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
 
@@ -25,28 +32,91 @@ def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def train_random_forest(X_train, y_train):  # ovo za sve
-    rf = RandomForestClassifier()
-    best_params = grid_search(X_train, y_train, rf)
-    rf = RandomForestClassifier(**best_params)
+def train_random_forest(X_train, y_train):
+    if os.path.isfile(rf_filename) and os.path.getsize(rf_filename) > 0:
+        rf = load(rf_filename)
+    else:
+        rf = RandomForestClassifier()
+        param_grid = {
+            'n_estimators': [300, 350],
+            'max_depth': [35, 10],
+            'min_samples_split': [10, 25, 50],
+            'random_state': [42],
+            'max_features': ['auto'],
+            'min_samples_leaf': [1]
+        }
+        best_params = grid_search(X_train, y_train, rf)
+        rf = RandomForestClassifier(**best_params)
+        dump(rf, rf_filename)
+        
     rf.fit(X_train, y_train)
     return rf
 
 
 def train_gradient_boosting(X_train, y_train):
-    gb = GradientBoostingClassifier()
+    if os.path.isfile(gb_filename) and os.path.getsize(gb_filename) > 0:
+        gb = load(gb_filename)
+    else:
+        gb = GradientBoostingClassifier()
+        param_grid = {'n_estimators': [200],
+                      'max_depth': [2],
+                      'learning_rate': [0.1],
+                      'min_samples_split': [2],
+                      'min_samples_leaf': [4],
+                      'subsample': [1.0],
+                      'max_features': ['log2']}
+
+        # param_grid = {'n_estimators': [50, 100, 200],
+        #               'max_depth': [2, 3, 4],
+        #               'learning_rate': [0.1, 0.01, 0.001],
+        #               'min_samples_split': [2, 4, 6],
+        #               'min_samples_leaf': [1, 2, 4],
+        #               'subsample': [0.5, 0.75, 1.0],
+        #               'max_features': ['sqrt', 'log2', None]}
+        best_params = grid_search(X_train, y_train, gb, param_grid)
+        gb = GradientBoostingClassifier(**best_params)
+        dump(gb, gb_filename)
+
     gb.fit(X_train, y_train)
     return gb
 
 
 def train_xgboost(X_train, y_train):
-    xgboost = xgb.XGBClassifier()
+    if os.path.isfile(xgb_filename) and os.path.getsize(xgb_filename) > 0:
+        xgboost = load(xgb_filename)
+    else:
+        xgboost = xgb.XGBClassifier()
+
+        param_grid = {
+            'n_estimators': [50, 100, 150],
+            'max_depth': [3, 4, 5],
+            'learning_rate': [0.01, 0.1, 1],
+            'subsample': [0.5, 0.7, 1],
+            'colsample_bytree': [0.5, 0.7, 1],
+        }
+        best_params = grid_search(X_train, y_train, xgboost, param_grid)
+        xgboost = xgb.XGBClassifier(**best_params)
+        dump(xgboost, xgb_filename)
+
     xgboost.fit(X_train, y_train)
     return xgboost
 
 
 def train_bagging(X_train, y_train):
-    bagging = BaggingClassifier()
+    if os.path.isfile(bagging_filename) and os.path.getsize(bagging_filename) > 0:
+        bagging = load(bagging_filename)
+    else:
+        bagging = BaggingClassifier()
+
+        param_grid = {
+            'n_estimators': [50, 100, 150], #150
+            'max_samples': [0.5, 0.7, 1], #0.5
+            'max_features': [0.5, 0.7, 1], #0.5
+        }
+        best_params = grid_search(X_train, y_train, bagging, param_grid)
+        bagging = BaggingClassifier(**best_params)
+        dump(bagging, bagging_filename)
+
     bagging.fit(X_train, y_train)
     return bagging
 
@@ -101,38 +171,17 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     print('Test F1 score:', test_f1)
 
 
-def grid_search(X_train, y_train, rfc):
-    # param_grid = {
-    #     'n_estimators': [299.5, 300, 300.5],
-    #     'max_depth': [34.5, 35, 35.5],
-    #     'min_samples_split': [25.5, 25, 24.5],
-    # }
-
-    param_grid = {
-        'n_estimators': [250, 300, 350],  # broj drveca u sumi
-        'max_depth': [20, 35, 45],  # maksimalna dubina
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4],
-        'max_features': ['auto', 'sqrt', 'log2'],
-        'bootstrap': [True, False],
-        'random_state': [42]
-    }
-
-    # Create a Grid Search object
+def grid_search(X_train, y_train, rfc, param_grid):
     grid_search = GridSearchCV(estimator=rfc, param_grid=param_grid, cv=5)
-
-    # Fit the Grid Search object to the training data
     grid_search.fit(X_train, y_train)
-
-    # Print the best hyperparameters and corresponding score
     print('Best hyperparameters:', grid_search.best_params_)
     print('Best score:', grid_search.best_score_)
-
     best_params = grid_search.best_params_
     return best_params
 
 
 def main():
+
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
@@ -147,9 +196,21 @@ def main():
 
             data = load_data('train.csv')
             X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
-            model = train_random_forest(X_train, y_train)
+            rf_model = train_random_forest(X_train, y_train)
             print('Random forest:')
-            evaluate_model(model, X_val, y_val, X_test, y_test)
+            evaluate_model(rf_model, X_val, y_val, X_test, y_test)
+
+            gb_model = train_gradient_boosting(X_train, y_train)
+            print('Gradient boosting:')
+            evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+
+            xgb_model = train_xgboost(X_train, y_train)
+            print('XGBoost:')
+            evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+
+            bagging_model = train_bagging(X_train, y_train)
+            print('Bagging:')
+            evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
