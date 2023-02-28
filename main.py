@@ -198,10 +198,6 @@ def main():
     print('Bagging:')
     evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
 
-    light_gbm_model = train_light_gbm(X_train, y_train, X_val, y_val)
-    print('LightGBM:')
-    evaluate_model(light_gbm_model, X_val, y_val, X_test, y_test)
-
 
 if __name__ == '__main__':
     main()
