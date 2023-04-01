@@ -15,6 +15,7 @@ xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
+from sentiments import sent_menu
 
 
 def load_data(filepath):
@@ -48,7 +49,7 @@ def train_random_forest(X_train, y_train):
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
         dump(rf, rf_filename)
-        
+
     rf.fit(X_train, y_train)
     return rf
 
@@ -109,9 +110,9 @@ def train_bagging(X_train, y_train):
         bagging = BaggingClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150], #150
-            'max_samples': [0.5, 0.7, 1], #0.5
-            'max_features': [0.5, 0.7, 1], #0.5
+            'n_estimators': [50, 100, 150],  # 150
+            'max_samples': [0.5, 0.7, 1],  # 0.5
+            'max_features': [0.5, 0.7, 1],  # 0.5
         }
         best_params = grid_search(X_train, y_train, bagging, param_grid)
         bagging = BaggingClassifier(**best_params)
@@ -181,11 +182,11 @@ def grid_search(X_train, y_train, rfc, param_grid):
 
 
 def main():
-
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
+        print("3 - Sentiment analysis")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -211,6 +212,8 @@ def main():
             bagging_model = train_bagging(X_train, y_train)
             print('Bagging:')
             evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+        elif choice == "3":
+            sent_menu()
 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
