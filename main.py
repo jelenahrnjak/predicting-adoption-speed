@@ -15,11 +15,12 @@ xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
+from image_work import train_images
 
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
-    df = df.drop(['Name', 'Description', 'RescuerID', 'PetID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
     data = df.values.tolist()
     return data
 
@@ -186,6 +187,7 @@ def main():
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
+        print("4 - Prediction for images")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -211,6 +213,10 @@ def main():
             bagging_model = train_bagging(X_train, y_train)
             print('Bagging:')
             evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+
+        elif choice == "4":
+
+            train_images('train.csv','train_images2')
 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
