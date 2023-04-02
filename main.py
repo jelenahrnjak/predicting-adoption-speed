@@ -20,7 +20,7 @@ from image_work import main_images
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
-    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1) #izbaciti one sa quantity > 1
     df['PetID'] = df['PetID'].astype(str)
     df = df.set_index('PetID') #podesavanje da se spaja posle po id-u
     return df
@@ -100,11 +100,17 @@ def train_xgboost(X_train, y_train):
         xgboost = xgb.XGBClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150],
-            'max_depth': [3, 4, 5],
-            'learning_rate': [0.01, 0.1, 1],
-            'subsample': [0.5, 0.7, 1],
-            'colsample_bytree': [0.5, 0.7, 1],
+            # 'n_estimators': [50, 100, 150],
+            # 'max_depth': [3, 4, 5],
+            # 'learning_rate': [0.01, 0.1, 1],
+            # 'subsample': [0.5, 0.7, 1],
+            # 'colsample_bytree': [0.5, 0.7, 1],
+
+            'n_estimators': [50],
+            'max_depth': [ 5],
+            'learning_rate': [0.1],
+            'subsample': [0.5],
+            'colsample_bytree': [0.5],
         }
         best_params = grid_search(X_train, y_train, xgboost, param_grid)
         xgboost = xgb.XGBClassifier(**best_params)
@@ -198,17 +204,17 @@ def model_fitting(data):
     print('Random forest:')
     evaluate_model(rf_model, X_val, y_val, X_test, y_test)
 
-    # gb_model = train_gradient_boosting(X_train, y_train)
-    # print('Gradient boosting:')
-    # evaluate_model(gb_model, X_val, y_val, X_test, y_test)
-    #
-    # xgb_model = train_xgboost(X_train, y_train)
-    # print('XGBoost:')
-    # evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
-    #
-    # bagging_model = train_bagging(X_train, y_train)
-    # print('Bagging:')
-    # evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+    gb_model = train_gradient_boosting(X_train, y_train)
+    print('Gradient boosting:')
+    evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+
+    xgb_model = train_xgboost(X_train, y_train)
+    print('XGBoost:')
+    evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+
+    bagging_model = train_bagging(X_train, y_train)
+    print('Bagging:')
+    evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
 
 def main():
 
