@@ -15,23 +15,28 @@ xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
-from image_work import train_images
+from image_work import main_images
 
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
     df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
-    data = df.values.tolist()
-    return data
+    df['PetID'] = df['PetID'].astype(str)
+    df = df.set_index('PetID') #podesavanje da se spaja posle po id-u
+    return df
 
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
+    data = data.values.tolist()
     X = [row[:-1] for row in data]
     y = [row[-1] for row in data]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_size, random_state=random_state)
     return X_train, X_val, X_test, y_train, y_val, y_test
 
+def combine_image_adn_tabular_data(image_data, tabular_data):
+    combined_data = pd.concat([pd.DataFrame.from_dict(image_data, orient='index'), tabular_data], axis=1) #spajanje po id-u
+    return combined_data
 
 def train_random_forest(X_train, y_train):
     if os.path.isfile(rf_filename) and os.path.getsize(rf_filename) > 0:
@@ -39,9 +44,15 @@ def train_random_forest(X_train, y_train):
     else:
         rf = RandomForestClassifier()
         param_grid = {
-            'n_estimators': [300, 350],
-            'max_depth': [35, 10],
-            'min_samples_split': [10, 25, 50],
+            # 'n_estimators': [300, 350],
+            # 'max_depth': [35, 10],
+            # 'min_samples_split': [10, 25, 50],
+            # 'random_state': [42],
+            # 'max_features': ['auto'],
+            # 'min_samples_leaf': [1]
+            'n_estimators': [300],
+            'max_depth': [10],
+            'min_samples_split': [10],
             'random_state': [42],
             'max_features': ['auto'],
             'min_samples_leaf': [1]
@@ -181,13 +192,31 @@ def grid_search(X_train, y_train, rfc, param_grid):
     return best_params
 
 
+def model_fitting(data):
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
+    rf_model = train_random_forest(X_train, y_train)
+    print('Random forest:')
+    evaluate_model(rf_model, X_val, y_val, X_test, y_test)
+
+    # gb_model = train_gradient_boosting(X_train, y_train)
+    # print('Gradient boosting:')
+    # evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+    #
+    # xgb_model = train_xgboost(X_train, y_train)
+    # print('XGBoost:')
+    # evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+    #
+    # bagging_model = train_bagging(X_train, y_train)
+    # print('Bagging:')
+    # evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+
 def main():
 
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
-        print("4 - Prediction for images")
+        print("4 - Model fitting with image and tabular data")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -197,26 +226,15 @@ def main():
         elif choice == "2":
 
             data = load_data('train.csv')
-            X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
-            rf_model = train_random_forest(X_train, y_train)
-            print('Random forest:')
-            evaluate_model(rf_model, X_val, y_val, X_test, y_test)
-
-            gb_model = train_gradient_boosting(X_train, y_train)
-            print('Gradient boosting:')
-            evaluate_model(gb_model, X_val, y_val, X_test, y_test)
-
-            xgb_model = train_xgboost(X_train, y_train)
-            print('XGBoost:')
-            evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
-
-            bagging_model = train_bagging(X_train, y_train)
-            print('Bagging:')
-            evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+            model_fitting(data)
 
         elif choice == "4":
 
-            train_images('train.csv','train_images2')
+            tabular_data = load_data('train.csv')
+            image_data = main_images('train_images2')
+            combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
+            model_fitting(combined_data)
+
 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
