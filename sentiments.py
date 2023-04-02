@@ -29,16 +29,11 @@ stemmer = SnowballStemmer("english")
 
 
 def soundex(word):
-    """
-    Funkcija koja izračunava Soundex kod za zadatu riječ.
-    """
-    # zamijeni sva slova velika slovima malog pisma
     word = word.lower()
 
     # pretvori riječ u niz znakova
     word_list = list(word)
 
-    # zamijeni posebne kombinacije slova
     for i in range(len(word_list)):
         if word_list[i] in ['b', 'f', 'p', 'v']:
             word_list[i] = '1'
@@ -60,7 +55,6 @@ def soundex(word):
     soundex_code = soundex_code.replace('0', '')
     soundex_code = soundex_code.ljust(4, '0')
 
-    # vrati Soundex kod
     return soundex_code
 
 
@@ -136,11 +130,23 @@ def sent_menu():
     s = pd.DataFrame(columns=['Score'])
     m = pd.DataFrame(columns=['Magnitude'])
 
+    a = pd.DataFrame(columns=['Age'])
+    b = pd.DataFrame(columns=['Breed1'])
+    g = pd.DataFrame(columns=['Gender'])
+    ms = pd.DataFrame(columns=['MaturitySize'])
+    fl = pd.DataFrame(columns=['FurLength'])
+
     for index, row in df.iterrows():
 
         description = str(row["Description"])
         adoption_speed = row['AdoptionSpeed']
         pet_id = row['PetID']
+
+        age = row['Age']
+        breed = row['Breed1']
+        gender = row['Gender']
+        mat_size = row['MaturitySize']
+        fur = row['FurLength']
 
         json_path = os.path.join(json_folder, pet_id + '.json')
 
@@ -156,7 +162,6 @@ def sent_menu():
         tokens = tokenize_text(description)
         text = ' '.join(tokens)
 
-        # dodaj izvucene podatke u novi dataframe
         x = x.append(
             {'Description': text, 'Score': score, 'Magnitude': magnitude}, ignore_index=True)
 
@@ -167,18 +172,29 @@ def sent_menu():
         s = s.append({'Score': score}, ignore_index=True)
         m = m.append({'Magnitude': magnitude}, ignore_index=True)
 
+        a = a.append({'Age': age}, ignore_index=True)
+        b = b.append({'Breed1': breed}, ignore_index=True)
+        g = g.append({'Gender': gender}, ignore_index=True)
+        ms = ms.append({'MaturitySize': mat_size}, ignore_index=True)
+        fl = fl.append({'FurLength': fur}, ignore_index=True)
+
     tfidf = TfidfVectorizer()
     tfidf_matrix = tfidf.fit_transform(d['Description'])
 
     s = s['Score']
     m = m['Magnitude']
     y = y['AdoptionSpeed']
+    a = a['Age']
+    b = b['Breed1']
+    g = g['Gender']
+    ms = ms['MaturitySize']
+    fl = fl['FurLength']
 
     # lsa_analysis(tfidf_matrix)
     lsa_model = TruncatedSVD(n_components=12500)  # 12500 dobijeno analizom varijansi u fji iznad
     lsa = lsa_model.fit_transform(tfidf_matrix)
 
-    df_other_all = pd.concat([pd.DataFrame(lsa), s, m], axis=1)
+    df_other_all = pd.concat([pd.DataFrame(lsa), s, m, a, b, g, ms, fl], axis=1)
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df_other_all, y.astype('int'))
 
