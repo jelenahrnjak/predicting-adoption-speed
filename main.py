@@ -18,11 +18,12 @@ bagging_filename = 'bagging_model.joblib'
 from eda import menu
 from sentiments import sent_menu
 from sentiments import sent_menu_comb
+from image_work import train_images
 
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
-    df = df.drop(['Name', 'Description', 'RescuerID', 'PetID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
     data = df.values.tolist()
     return data
 
@@ -195,8 +196,9 @@ def main():
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
         print("3 - Sentiment analysis without combining")
-
+        print("4 - Prediction for images")
         print("5 - Sentiment analysis with combining")
+        print("4 - Prediction for images")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -224,6 +226,8 @@ def main():
             evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
         elif choice == "3":
             sent_menu()
+         elif choice == "4":
+            train_images('train.csv','train_images2')
         elif choice == "5":
             data = load_data_for_merge('train.csv')
             print(type(data))
