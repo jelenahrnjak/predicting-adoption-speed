@@ -9,6 +9,7 @@ import lightgbm as lgb
 from joblib import dump, load
 import os
 
+
 rf_filename = 'random_forest_model.joblib'
 gb_filename = 'gradient_boosting_model.joblib'
 xgb_filename = 'xgb_model.joblib'
@@ -16,6 +17,7 @@ bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
 from sentiments import sent_menu
+from sentiments import sent_menu_comb
 
 
 def load_data(filepath):
@@ -24,6 +26,11 @@ def load_data(filepath):
     data = df.values.tolist()
     return data
 
+
+def load_data_for_merge(filepath):
+    df = pd.read_csv(filepath)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'PetID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    return df
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     X = [row[:-1] for row in data]
@@ -172,6 +179,7 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     print('Test F1 score:', test_f1)
 
 
+
 def grid_search(X_train, y_train, rfc, param_grid):
     grid_search = GridSearchCV(estimator=rfc, param_grid=param_grid, cv=5)
     grid_search.fit(X_train, y_train)
@@ -186,7 +194,9 @@ def main():
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
-        print("3 - Sentiment analysis")
+        print("3 - Sentiment analysis without combining")
+
+        print("5 - Sentiment analysis with combining")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -214,7 +224,11 @@ def main():
             evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
         elif choice == "3":
             sent_menu()
-
+        elif choice == "5":
+            data = load_data_for_merge('train.csv')
+            print(type(data))
+            data_and_sentiments = sent_menu_comb(data)
+            print(data_and_sentiments.head())
         elif choice == "x" or choice == "X":
             print("Goodbye!")
             break
