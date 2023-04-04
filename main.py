@@ -9,12 +9,15 @@ import lightgbm as lgb
 from joblib import dump, load
 import os
 
+
 rf_filename = 'random_forest_model.joblib'
 gb_filename = 'gradient_boosting_model.joblib'
 xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
+from sentiments import sent_menu
+from sentiments import sent_menu_comb
 from image_work import train_images
 
 
@@ -24,6 +27,11 @@ def load_data(filepath):
     data = df.values.tolist()
     return data
 
+
+def load_data_for_merge(filepath):
+    df = pd.read_csv(filepath)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'PetID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    return df
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     X = [row[:-1] for row in data]
@@ -49,7 +57,7 @@ def train_random_forest(X_train, y_train):
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
         dump(rf, rf_filename)
-        
+
     rf.fit(X_train, y_train)
     return rf
 
@@ -110,9 +118,9 @@ def train_bagging(X_train, y_train):
         bagging = BaggingClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150], #150
-            'max_samples': [0.5, 0.7, 1], #0.5
-            'max_features': [0.5, 0.7, 1], #0.5
+            'n_estimators': [50, 100, 150],  # 150
+            'max_samples': [0.5, 0.7, 1],  # 0.5
+            'max_features': [0.5, 0.7, 1],  # 0.5
         }
         best_params = grid_search(X_train, y_train, bagging, param_grid)
         bagging = BaggingClassifier(**best_params)
@@ -172,6 +180,7 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     print('Test F1 score:', test_f1)
 
 
+
 def grid_search(X_train, y_train, rfc, param_grid):
     grid_search = GridSearchCV(estimator=rfc, param_grid=param_grid, cv=5)
     grid_search.fit(X_train, y_train)
@@ -182,11 +191,13 @@ def grid_search(X_train, y_train, rfc, param_grid):
 
 
 def main():
-
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
+        print("3 - Sentiment analysis without combining")
+        print("4 - Prediction for images")
+        print("5 - Sentiment analysis with combining")
         print("4 - Prediction for images")
         print("X - Quit")
 
@@ -213,11 +224,15 @@ def main():
             bagging_model = train_bagging(X_train, y_train)
             print('Bagging:')
             evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
-
-        elif choice == "4":
-
+        elif choice == "3":
+            sent_menu()
+         elif choice == "4":
             train_images('train.csv','train_images2')
-
+        elif choice == "5":
+            data = load_data_for_merge('train.csv')
+            print(type(data))
+            data_and_sentiments = sent_menu_comb(data)
+            print(data_and_sentiments.head())
         elif choice == "x" or choice == "X":
             print("Goodbye!")
             break
