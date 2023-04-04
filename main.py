@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, cohen_kappa_score
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
@@ -51,18 +51,12 @@ def train_random_forest(X_train, y_train):
     else:
         rf = RandomForestClassifier()
         param_grid = {
-            # 'n_estimators': [300, 350],
-            # 'max_depth': [35, 10],
-            # 'min_samples_split': [10, 25, 50],
-            # 'random_state': [42],
-            # 'max_features': ['auto'],
-            # 'min_samples_leaf': [1]
-            'n_estimators': [300],
-            'max_depth': [10],
-            'min_samples_split': [10],
+            'n_estimators': [100, 300, 400],
+            'max_depth': [30, 20, 10],
+            'min_samples_split': [10, 30, 50],
             'random_state': [42],
             'max_features': ['auto'],
-            'min_samples_leaf': [1]
+            'min_samples_leaf': [1, 3]
         }
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
@@ -77,21 +71,13 @@ def train_gradient_boosting(X_train, y_train):
         gb = load(gb_filename)
     else:
         gb = GradientBoostingClassifier()
-        param_grid = {'n_estimators': [200],
-                      'max_depth': [2],
-                      'learning_rate': [0.1],
-                      'min_samples_split': [2],
-                      'min_samples_leaf': [4],
-                      'subsample': [1.0],
-                      'max_features': ['log2']}
-
-        # param_grid = {'n_estimators': [50, 100, 200],
-        #               'max_depth': [2, 3, 4],
-        #               'learning_rate': [0.1, 0.01, 0.001],
-        #               'min_samples_split': [2, 4, 6],
-        #               'min_samples_leaf': [1, 2, 4],
-        #               'subsample': [0.5, 0.75, 1.0],
-        #               'max_features': ['sqrt', 'log2', None]}
+        param_grid = {'n_estimators': [20, 200, 400],
+                       'max_depth': [2, 4, 6],
+                       'learning_rate': [0.1, 0.01, 0.001],
+                       'min_samples_split': [2, 4 , 7],
+                       'min_samples_leaf': [1, 3, 5],
+                       'subsample': [0.5, 0.75, 1.0],
+                       'max_features': ['sqrt', 'log2', None]}
         best_params = grid_search(X_train, y_train, gb, param_grid)
         gb = GradientBoostingClassifier(**best_params)
         dump(gb, gb_filename)
@@ -107,17 +93,11 @@ def train_xgboost(X_train, y_train):
         xgboost = xgb.XGBClassifier()
 
         param_grid = {
-            # 'n_estimators': [50, 100, 150],
-            # 'max_depth': [3, 4, 5],
-            # 'learning_rate': [0.01, 0.1, 1],
-            # 'subsample': [0.5, 0.7, 1],
-            # 'colsample_bytree': [0.5, 0.7, 1],
-
-            'n_estimators': [50],
-            'max_depth': [ 5],
-            'learning_rate': [0.1],
-            'subsample': [0.5],
-            'colsample_bytree': [0.5],
+            'n_estimators': [50, 100, 200],
+            'max_depth': [3, 5, 7],
+            'learning_rate': [0.01, 0.1, 1],
+            'subsample': [0.5, 0.7, 1],
+            'colsample_bytree': [0.2, 0.5, 1],
         }
         best_params = grid_search(X_train, y_train, xgboost, param_grid)
         xgboost = xgb.XGBClassifier(**best_params)
@@ -134,9 +114,9 @@ def train_bagging(X_train, y_train):
         bagging = BaggingClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150], #150
-            'max_samples': [0.5, 0.7, 1], #0.5
-            'max_features': [0.5, 0.7, 1], #0.5
+            'n_estimators': [150, 200, 300], #150
+            'max_samples': [0.5, 0.7, 0.2], #0.5
+            'max_features': [0.5, 0.7, 0.2], #0.5
         }
         best_params = grid_search(X_train, y_train, bagging, param_grid)
         bagging = BaggingClassifier(**best_params)
@@ -186,14 +166,21 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     val_predictions = model.predict(X_val)
     val_accuracy = accuracy_score(y_val, val_predictions)
     val_f1 = f1_score(y_val, val_predictions, average='weighted')
-    print('Validation accuracy:', val_accuracy)
-    print('Validation F1 score:', val_f1)
+    print('Validation accuracy: ', val_accuracy)
+    print('Validation F1 score: ', val_f1)
 
     test_predictions = model.predict(X_test)
     test_accuracy = accuracy_score(y_test, test_predictions)
     test_f1 = f1_score(y_test, test_predictions, average='weighted')
-    print('Test accuracy:', test_accuracy)
-    print('Test F1 score:', test_f1)
+    print('Test accuracy: ', test_accuracy)
+    print('Test F1 score: ', test_f1)
+
+    weights = 'quadratic'
+
+    val_kappa = cohen_kappa_score(y_val, val_predictions, weights)
+    test_kappa = cohen_kappa_score(y_test, test_predictions, weights=weights)
+    print('Validation quadratic weighted kappa: ', val_kappa)
+    print('Test quadratic weighted kappa: ', test_kappa)
 
 
 def grid_search(X_train, y_train, rfc, param_grid):
@@ -246,7 +233,7 @@ def main():
             tabular_data = load_data('train.csv')
             image_data = main_images('train_images2')
             combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
-            #model_fitting(combined_data)
+            model_fitting(combined_data)
             print('done')
 
         elif choice == "x" or choice == "X":
