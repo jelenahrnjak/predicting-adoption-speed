@@ -220,8 +220,8 @@ def main():
         print("2 - Model fitting")
         print("3 - Sentiment analysis without combining")
         print("4 - Model fitting with image and tabular data")
-        print("5 - Sentiment analysis with combining")
-        print("4 - Prediction for images")
+        print("5 - Sentiment analysis with combining with tabular data")
+        print("6 - Model fitting with combined tabular data, images and sentiments ")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -234,15 +234,28 @@ def main():
         elif choice == "3":
             sent_menu()
         elif choice == "4":
+
             tabular_data = load_data('train.csv')
-            image_data = main_images('train_images2')
+            image_data = main_images('train_images')
             combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
-            model_fitting(combined_data) 
+            model_fitting(combined_data)
+
         elif choice == "5":
+
             data = load_data('train.csv')
             print(type(data))
             data_and_sentiments = sent_menu_comb(data)
-            print(data_and_sentiments.head()) 
+            print(data_and_sentiments.head())
+            model_fitting(combined_data)
+
+        elif choice == "6":
+
+            data = load_data('train.csv')
+            data_and_sentiments = sent_menu_comb(data)
+            image_data = main_images('train_images')
+            combined_data = combine_image_adn_tabular_data(image_data, data_and_sentiments)
+            model_fitting(combined_data)
+
         elif choice == "x" or choice == "X":
             print("Goodbye!")
             break
