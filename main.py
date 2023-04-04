@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, cohen_kappa_score
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
 import lightgbm as lgb
 from joblib import dump, load
 import os
+from sklearn.impute import SimpleImputer
 
 
 rf_filename = 'random_forest_model.joblib'
@@ -16,30 +17,35 @@ xgb_filename = 'xgb_model.joblib'
 bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
+from image_work import main_images
 from sentiments import sent_menu
 from sentiments import sent_menu_comb
-from image_work import train_images
 
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
-    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
-    data = df.values.tolist()
-    return data
-
-
-def load_data_for_merge(filepath):
-    df = pd.read_csv(filepath)
-    df = df.drop(['Name', 'Description', 'RescuerID', 'PetID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1)
+    df = df.drop(['Name', 'Description', 'RescuerID', 'VideoAmt', 'PhotoAmt', 'State'], axis=1) #izbaciti one sa quantity > 1
+    df['PetID'] = df['PetID'].astype(str)
+    df = df.set_index('PetID') #podesavanje da se spaja posle po id-u
     return df
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
+    data.columns = data.columns.astype(str)
+    imputer = SimpleImputer(strategy='mean')
+    df2 = imputer.fit_transform(data)
+    df = pd.DataFrame(df2, columns=data.columns)
+    data = df.values.tolist()
     X = [row[:-1] for row in data]
     y = [row[-1] for row in data]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_size, random_state=random_state)
     return X_train, X_val, X_test, y_train, y_val, y_test
 
+def combine_image_adn_tabular_data(image_data, tabular_data):
+    if not image_data:
+        raise ValueError("image_data is empty or None")
+    combined_data = pd.concat([pd.DataFrame.from_dict(image_data, orient='index'), tabular_data], axis=1)
+    return combined_data
 
 def train_random_forest(X_train, y_train):
     if os.path.isfile(rf_filename) and os.path.getsize(rf_filename) > 0:
@@ -47,12 +53,12 @@ def train_random_forest(X_train, y_train):
     else:
         rf = RandomForestClassifier()
         param_grid = {
-            'n_estimators': [300, 350],
-            'max_depth': [35, 10],
-            'min_samples_split': [10, 25, 50],
+            'n_estimators': [100, 300, 400],
+            'max_depth': [30, 20, 10],
+            'min_samples_split': [10, 30, 50],
             'random_state': [42],
             'max_features': ['auto'],
-            'min_samples_leaf': [1]
+            'min_samples_leaf': [1, 3]
         }
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
@@ -67,21 +73,13 @@ def train_gradient_boosting(X_train, y_train):
         gb = load(gb_filename)
     else:
         gb = GradientBoostingClassifier()
-        param_grid = {'n_estimators': [200],
-                      'max_depth': [2],
-                      'learning_rate': [0.1],
-                      'min_samples_split': [2],
-                      'min_samples_leaf': [4],
-                      'subsample': [1.0],
-                      'max_features': ['log2']}
-
-        # param_grid = {'n_estimators': [50, 100, 200],
-        #               'max_depth': [2, 3, 4],
-        #               'learning_rate': [0.1, 0.01, 0.001],
-        #               'min_samples_split': [2, 4, 6],
-        #               'min_samples_leaf': [1, 2, 4],
-        #               'subsample': [0.5, 0.75, 1.0],
-        #               'max_features': ['sqrt', 'log2', None]}
+        param_grid = {'n_estimators': [20, 200, 400],
+                       'max_depth': [2, 4, 6],
+                       'learning_rate': [0.1, 0.01, 0.001],
+                       'min_samples_split': [2, 4 , 7],
+                       'min_samples_leaf': [1, 3, 5],
+                       'subsample': [0.5, 0.75, 1.0],
+                       'max_features': ['sqrt', 'log2', None]}
         best_params = grid_search(X_train, y_train, gb, param_grid)
         gb = GradientBoostingClassifier(**best_params)
         dump(gb, gb_filename)
@@ -97,11 +95,11 @@ def train_xgboost(X_train, y_train):
         xgboost = xgb.XGBClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150],
-            'max_depth': [3, 4, 5],
+            'n_estimators': [50, 100, 200],
+            'max_depth': [3, 5, 7],
             'learning_rate': [0.01, 0.1, 1],
             'subsample': [0.5, 0.7, 1],
-            'colsample_bytree': [0.5, 0.7, 1],
+            'colsample_bytree': [0.2, 0.5, 1],
         }
         best_params = grid_search(X_train, y_train, xgboost, param_grid)
         xgboost = xgb.XGBClassifier(**best_params)
@@ -118,9 +116,9 @@ def train_bagging(X_train, y_train):
         bagging = BaggingClassifier()
 
         param_grid = {
-            'n_estimators': [50, 100, 150],  # 150
-            'max_samples': [0.5, 0.7, 1],  # 0.5
-            'max_features': [0.5, 0.7, 1],  # 0.5
+            'n_estimators': [150, 200, 300], #150
+            'max_samples': [0.5, 0.7, 0.2], #0.5
+            'max_features': [0.5, 0.7, 0.2], #0.5
         }
         best_params = grid_search(X_train, y_train, bagging, param_grid)
         bagging = BaggingClassifier(**best_params)
@@ -170,14 +168,21 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     val_predictions = model.predict(X_val)
     val_accuracy = accuracy_score(y_val, val_predictions)
     val_f1 = f1_score(y_val, val_predictions, average='weighted')
-    print('Validation accuracy:', val_accuracy)
-    print('Validation F1 score:', val_f1)
+    print('Validation accuracy: ', val_accuracy)
+    print('Validation F1 score: ', val_f1)
 
     test_predictions = model.predict(X_test)
     test_accuracy = accuracy_score(y_test, test_predictions)
     test_f1 = f1_score(y_test, test_predictions, average='weighted')
-    print('Test accuracy:', test_accuracy)
-    print('Test F1 score:', test_f1)
+    print('Test accuracy: ', test_accuracy)
+    print('Test F1 score: ', test_f1)
+
+    weights = 'quadratic'
+
+    val_kappa = cohen_kappa_score(y_val, val_predictions, weights)
+    test_kappa = cohen_kappa_score(y_test, test_predictions, weights=weights)
+    print('Validation quadratic weighted kappa: ', val_kappa)
+    print('Test quadratic weighted kappa: ', test_kappa)
 
 
 
@@ -190,13 +195,31 @@ def grid_search(X_train, y_train, rfc, param_grid):
     return best_params
 
 
+def model_fitting(data):
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
+    rf_model = train_random_forest(X_train, y_train)
+    print('Random forest:')
+    evaluate_model(rf_model, X_val, y_val, X_test, y_test)
+
+    gb_model = train_gradient_boosting(X_train, y_train)
+    print('Gradient boosting:')
+    evaluate_model(gb_model, X_val, y_val, X_test, y_test)
+
+    xgb_model = train_xgboost(X_train, y_train)
+    print('XGBoost:')
+    evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
+
+    bagging_model = train_bagging(X_train, y_train)
+    print('Bagging:')
+    evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+
 def main():
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
         print("3 - Sentiment analysis without combining")
-        print("4 - Prediction for images")
+        print("4 - Model fitting with image and tabular data")
         print("5 - Sentiment analysis with combining")
         print("4 - Prediction for images")
         print("X - Quit")
@@ -206,33 +229,20 @@ def main():
         if choice == "1":
             menu()
         elif choice == "2":
-
             data = load_data('train.csv')
-            X_train, X_val, X_test, y_train, y_val, y_test = split_data(data)
-            rf_model = train_random_forest(X_train, y_train)
-            print('Random forest:')
-            evaluate_model(rf_model, X_val, y_val, X_test, y_test)
-
-            gb_model = train_gradient_boosting(X_train, y_train)
-            print('Gradient boosting:')
-            evaluate_model(gb_model, X_val, y_val, X_test, y_test)
-
-            xgb_model = train_xgboost(X_train, y_train)
-            print('XGBoost:')
-            evaluate_model(xgb_model, X_val, y_val, X_test, y_test)
-
-            bagging_model = train_bagging(X_train, y_train)
-            print('Bagging:')
-            evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
+            model_fitting(data)
         elif choice == "3":
             sent_menu()
-         elif choice == "4":
-            train_images('train.csv','train_images2')
+        elif choice == "4":
+            tabular_data = load_data('train.csv')
+            image_data = main_images('train_images2')
+            combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
+            model_fitting(combined_data) 
         elif choice == "5":
-            data = load_data_for_merge('train.csv')
+            data = load_data('train.csv')
             print(type(data))
             data_and_sentiments = sent_menu_comb(data)
-            print(data_and_sentiments.head())
+            print(data_and_sentiments.head()) 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
             break
