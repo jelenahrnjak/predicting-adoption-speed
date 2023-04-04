@@ -10,6 +10,7 @@ from joblib import dump, load
 import os
 from sklearn.impute import SimpleImputer
 
+
 rf_filename = 'random_forest_model.joblib'
 gb_filename = 'gradient_boosting_model.joblib'
 xgb_filename = 'xgb_model.joblib'
@@ -17,6 +18,8 @@ bagging_filename = 'bagging_model.joblib'
 
 from eda import menu
 from image_work import main_images
+from sentiments import sent_menu
+from sentiments import sent_menu_comb
 
 
 def load_data(filepath):
@@ -25,7 +28,6 @@ def load_data(filepath):
     df['PetID'] = df['PetID'].astype(str)
     df = df.set_index('PetID') #podesavanje da se spaja posle po id-u
     return df
-
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     data.columns = data.columns.astype(str)
@@ -61,7 +63,7 @@ def train_random_forest(X_train, y_train):
         best_params = grid_search(X_train, y_train, rf)
         rf = RandomForestClassifier(**best_params)
         dump(rf, rf_filename)
-        
+
     rf.fit(X_train, y_train)
     return rf
 
@@ -183,6 +185,7 @@ def evaluate_model(model, X_val, y_val, X_test, y_test):
     print('Test quadratic weighted kappa: ', test_kappa)
 
 
+
 def grid_search(X_train, y_train, rfc, param_grid):
     grid_search = GridSearchCV(estimator=rfc, param_grid=param_grid, cv=5)
     grid_search.fit(X_train, y_train)
@@ -211,12 +214,14 @@ def model_fitting(data):
     evaluate_model(bagging_model, X_val, y_val, X_test, y_test)
 
 def main():
-
     while True:
         print("Select an option:")
         print("1 - Exploratory data analysis")
         print("2 - Model fitting")
+        print("3 - Sentiment analysis without combining")
         print("4 - Model fitting with image and tabular data")
+        print("5 - Sentiment analysis with combining")
+        print("4 - Prediction for images")
         print("X - Quit")
 
         choice = input("Enter option number: ")
@@ -224,18 +229,20 @@ def main():
         if choice == "1":
             menu()
         elif choice == "2":
-
             data = load_data('train.csv')
             model_fitting(data)
-
+        elif choice == "3":
+            sent_menu()
         elif choice == "4":
-
             tabular_data = load_data('train.csv')
             image_data = main_images('train_images2')
             combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
-            model_fitting(combined_data)
-            print('done')
-
+            model_fitting(combined_data) 
+        elif choice == "5":
+            data = load_data('train.csv')
+            print(type(data))
+            data_and_sentiments = sent_menu_comb(data)
+            print(data_and_sentiments.head()) 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
             break
