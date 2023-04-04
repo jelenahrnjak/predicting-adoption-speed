@@ -3,16 +3,20 @@ import cv2
 import numpy as np
 import pandas as pd
 from keras.applications import ResNet50
+from keras.applications.vgg16 import VGG16
 from keras.applications.resnet import preprocess_input
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from tensorflow.python.estimator import keras
+import pickle
 
+pickle_file = 'images_features.pkl'
 filename_for_model = 'my_model.h5'
 
-model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+# model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+model = VGG16(weights='imagenet', include_top=False)
 
 
 def load_all_images(images_path):
@@ -35,7 +39,7 @@ def load_all_images(images_path):
 
 def load_image(image_path):
     image = cv2.imread(image_path)
-    image = cv2.resize(image, (224, 224))
+    image = cv2.resize(image, (112, 112))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = preprocess_input(image)
     return image
@@ -48,8 +52,9 @@ def extract_features(image_path):
     return features
 
 
-def main_images(images_folder):
-    default_vector = np.zeros((2048,))
+def get_all_features(images_folder):
+    default_vector = np.zeros((2048,), dtype=np.float32)
+
     image_features_dict = {}
 
     image_path_dict = load_all_images(images_folder)
@@ -66,6 +71,17 @@ def main_images(images_folder):
 
     return image_features_dict
 
+
+def main_images(images_folder):
+    if os.path.exists(pickle_file):
+        with open(pickle_file, 'rb') as f:
+            image_features_dict =  pickle.load(f)
+    else:
+        image_features_dict = get_all_features(images_folder)
+        with open(pickle_file, 'wb') as f:
+            pickle.dump(image_features_dict, f)
+
+    return image_features_dict
 
 # Load tabular data
 def load_tabular_data(data_path):
@@ -112,7 +128,3 @@ def train_model(combined_data, X_train, y_train, X_val, y_val):
         model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val))
         model.save(filename_for_model)
         return model
-
-
-
-

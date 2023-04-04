@@ -139,6 +139,20 @@ def health(train):
     plt.show()
 
 
+def correlation(train):
+    numerical_vars = train.select_dtypes(include='number')
+    numerical_vars['AdoptionSpeed'] = pd.to_numeric(train['AdoptionSpeed'], downcast='integer')
+    corr_matrix = numerical_vars.corr()
+
+    adoption_speed_corr = corr_matrix['AdoptionSpeed'].drop('AdoptionSpeed')
+    print(adoption_speed_corr)
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
+    plt.title("Correlation Matrix Heatmap")
+    plt.show()
+
+
 def menu():
     while True:
         print("Select an option:")
@@ -146,6 +160,7 @@ def menu():
         print("2 - Animal type stats")
         print("3 - Breed stats")
         print("4 - Health and medical stats")
+        print("5 - Correlation matrix")
         print("X - Back")
 
         choice = input("Enter option number: ")
@@ -161,6 +176,9 @@ def menu():
             breeds_stats(train, palette)
         elif choice == "4":
             health(train)
+        elif choice == "5":
+            data = pd.read_csv('train.csv')
+            correlation(data)
         elif choice == "x" or choice == "X":
             print("Goodbye!\n")
             break

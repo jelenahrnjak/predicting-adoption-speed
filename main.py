@@ -8,6 +8,7 @@ import xgboost as xgb
 import lightgbm as lgb
 from joblib import dump, load
 import os
+from sklearn.impute import SimpleImputer
 
 rf_filename = 'random_forest_model.joblib'
 gb_filename = 'gradient_boosting_model.joblib'
@@ -27,7 +28,11 @@ def load_data(filepath):
 
 
 def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
-    data = data.values.tolist()
+    data.columns = data.columns.astype(str)
+    imputer = SimpleImputer(strategy='mean')
+    df2 = imputer.fit_transform(data)
+    df = pd.DataFrame(df2, columns=data.columns)
+    data = df.values.tolist()
     X = [row[:-1] for row in data]
     y = [row[-1] for row in data]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -35,7 +40,9 @@ def split_data(data, test_size=0.1, val_size=0.2, random_state=42):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 def combine_image_adn_tabular_data(image_data, tabular_data):
-    combined_data = pd.concat([pd.DataFrame.from_dict(image_data, orient='index'), tabular_data], axis=1) #spajanje po id-u
+    if not image_data:
+        raise ValueError("image_data is empty or None")
+    combined_data = pd.concat([pd.DataFrame.from_dict(image_data, orient='index'), tabular_data], axis=1)
     return combined_data
 
 def train_random_forest(X_train, y_train):
@@ -239,8 +246,8 @@ def main():
             tabular_data = load_data('train.csv')
             image_data = main_images('train_images2')
             combined_data = combine_image_adn_tabular_data(image_data, tabular_data)
-            model_fitting(combined_data)
-
+            #model_fitting(combined_data)
+            print('done')
 
         elif choice == "x" or choice == "X":
             print("Goodbye!")
